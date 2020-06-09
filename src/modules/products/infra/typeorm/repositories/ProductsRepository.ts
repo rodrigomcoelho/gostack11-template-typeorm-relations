@@ -1,4 +1,4 @@
-import { getRepository, Repository, In } from 'typeorm';
+import { getRepository, Repository } from 'typeorm';
 
 import IProductsRepository from '@modules/products/repositories/IProductsRepository';
 import ICreateProductDTO from '@modules/products/dtos/ICreateProductDTO';
@@ -21,21 +21,48 @@ class ProductsRepository implements IProductsRepository {
     price,
     quantity,
   }: ICreateProductDTO): Promise<Product> {
-    // TODO
+    const product = this.ormRepository.create({ name, price, quantity });
+    await this.ormRepository.save(product);
+
+    return product;
   }
 
   public async findByName(name: string): Promise<Product | undefined> {
-    // TODO
+    const product = await this.ormRepository.findOne({
+      where: {
+        name,
+      },
+    });
+
+    return product;
   }
 
   public async findAllById(products: IFindProducts[]): Promise<Product[]> {
-    // TODO
+    const productsArray = await this.ormRepository.findByIds(
+      products.map(product => product.id),
+    );
+
+    return productsArray;
   }
 
   public async updateQuantity(
     products: IUpdateProductsQuantityDTO[],
   ): Promise<Product[]> {
-    // TODO
+    const stockProducts = await this.ormRepository.findByIds(products);
+    let newStock = stockProducts.map(product => {
+      const productIndex = products.findIndex(p => p.id === product.id);
+
+      return {
+        ...product,
+        quantity: product.quantity - products[productIndex].quantity,
+      };
+    });
+
+    await this.ormRepository.save(newStock);
+
+    newStock = await this.ormRepository.findByIds(products);
+
+    return stockProducts;
   }
 }
 
